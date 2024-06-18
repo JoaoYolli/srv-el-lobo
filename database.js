@@ -1,7 +1,14 @@
 const { OPEN_READWRITE } = require('sqlite3');
 const sqlite3 = require('sqlite3').verbose();
+const fs = require('fs');
 
 async function initializeDB() {
+
+    var dir = './db';
+
+    if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir);
+    }
 
     let db = await openDatabase()
 
@@ -46,6 +53,32 @@ function openDatabase() {
     })
 }
 
+function openInMemoryDatabase() {
+    return new Promise((resolve) => {
+        let database = new sqlite3.Database(':memory:', (err) => {
+            if (err) {
+                console.error(err.message);
+            } else {
+                console.log('Iniciada base de datos en memoria');
+            }
+        });
+
+        database.run(`CREATE TABLE IF NOT EXISTS mailVerif (
+            mail TEXT PRIMARY KEY,
+            code CHAR(10),
+            UNIQUE (mail, code)
+            )`, (err) => {
+            if (err) {
+                console.error(err.message);
+            } else {
+                console.log('Tabla de verificacion creada exitosamente o ya existía.');
+            }
+        });
+
+        resolve(database)
+    })
+}
+
 function closeDB(db) {
     db.close((err) => {
         if (err) {
@@ -55,29 +88,111 @@ function closeDB(db) {
     });
 }
 
-async function getUserByMail(mail){
+async function getUserByMail(mail) {
 
     return new Promise(async (resolve) => {
-        
-            let db = await openDatabase()
 
-                // Get usuario
-                db.get(`SELECT * 
+        let db = await openDatabase()
+
+        // Get usuario
+        db.get(`SELECT * 
                             FROM users
                             WHERE mail = '${mail}'
                     `, (err, row) => {
-                    if (err) {
-                        console.error(err.message);
-                    } else {
-                        console.log("ROW",row)
-                        resolve(row)
-                    }
-                });
-            
-            closeDB(db)
+            if (err) {
+                console.error(err.message);
+            } else {
+                console.log("ROW", row)
+                resolve(row)
+            }
+        });
+
+        closeDB(db)
 
     })
 
 }
 
-module.exports = {initializeDB, getUserByMail}
+function createUser(mail, akka) {
+
+    return new Promise(async (resolve) => {
+
+        let search = await getUserByMail(mail)
+
+        if(search !== undefined){
+            resolve("User alredy exists")
+        }else{
+            let db = await openDatabase()
+    
+            db.run(`INSERT INTO users (mail, akka, kills_as_wolf, wolfs_killed) VALUES (?, ?, ? ,?)`, [mail, akka, 0, 0], function (err) {
+                if (err) {
+                    return console.error(err.message);
+                } else {
+                    console.log(`Un usuario ha sido insertado con el correo ${this.lastID}`);
+                }
+            });
+    
+            closeDB(db)
+    
+            resolve("User created succesfully!")
+        }
+
+    })
+
+}
+
+async function getUserVerification(mail, code, db) {
+
+    return new Promise(async (resolve) => {
+
+        db.get(`SELECT * 
+                            FROM mailVerif
+                            WHERE mail = '${mail}' AND
+                            code = ${code}
+                    `, (err, row) => {
+            if (err) {
+                console.error(err.message);
+            } else {
+                console.log("ROW", row)
+                resolve(row)
+            }
+        });
+
+        closeDB(db)
+
+    })
+
+}
+
+function createUserVerification(mail, code, db) {
+
+    return new Promise(async (resolve) => {
+        console.log(typeof db)
+        if(typeof db === ''){}
+
+        // let search = await getUserVerification(mail, code, db)
+
+        // if(search !== undefined){
+        //     resolve("User verification alredy exists")
+        // }else{
+    
+        //     db.run(`INSERT INTO mailVerif (mail, code) VALUES (?, ?)`, [mail, code], function (err) {
+        //         if (err) {
+        //             return console.error(err.message);
+        //         } else {
+        //             console.log(`Un usuario ha sido insertado con el correo ${this.lastID}`);
+        //         }
+        //     });
+    
+        //     closeDB(db)
+    
+        //     resolve("User verification created succesfully!")
+        // }
+
+    })
+
+}
+
+module.exports = { initializeDB, getUserByMail, createUser, openInMemoryDatabase
+                 , createUserVerification, getUserVerification
+}

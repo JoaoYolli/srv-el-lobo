@@ -4,6 +4,9 @@ const http = require("http");
 const host = 'localhost';
 const port = 8000;
 
+let dbMemo = db.openInMemoryDatabase()
+let code = ""
+
 const requestListener = async function (req, res) {
     const headers = {
         'Access-Control-Allow-Origin': '*', /* @dev First, read about security */
@@ -58,18 +61,25 @@ function identifyReqPOST(req, body) {
 
         console.log("REQUEST POST", req)
         if (req[1] == "send-mail") {
-            console.log("SEND MAIL", body, body["mail"])
-            email.sendVerificationMail(body["mail"])
+            // console.log("SEND MAIL", body, body["mail"])
+            code = await email.sendVerificationMail(body["mail"])
+            console.log(code)
+            // db.createUserVerification(body["mail"], code , dbMemo);
             resolve("Email Sended")
         }
         if (body["code"] && req[1] == "verify-code") {
-            console.log("VERIFY CODE")
+            // console.log("VERIFY CODE")
             let verified = email.verifyCode(req[2])
             if (verified) {
                 resolve("Email Verified")
             } else {
                 resolve("Incorrect Code")
             }
+        }
+        if (req[1] == "create-user") {
+            // console.log("CREATE USER", body)
+            let response = db.createUser(body["mail"], body["akka"])
+            resolve(response)
         }
 
 

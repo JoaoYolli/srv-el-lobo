@@ -2,11 +2,12 @@ var nodemailer = require('nodemailer');
 let code = "" 
 
 function sendVerificationMail(mail){
-    
+  return new Promise((resolve) =>{
+
     let uuid = crypto.randomUUID();
     uuid = uuid.split("-");
     code = uuid[0];
-
+  
     var transporter = nodemailer.createTransport({
         service: 'gmail',
         auth: {
@@ -29,6 +30,9 @@ function sendVerificationMail(mail){
           console.log('Email sent: ' + info.response);
         }
       });
+      resolve(code)
+  })
+    
 }
 
 function verifyCode(cod){
