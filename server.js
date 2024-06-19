@@ -4,33 +4,43 @@ const http = require("http");
 const host = 'localhost';
 const port = 8000;
 
-let dbMemo = db.openInMemoryDatabase()
-let code = ""
+let verifications = {}
 
 const requestListener = async function (req, res) {
-    const headers = {
-        'Access-Control-Allow-Origin': '*', /* @dev First, read about security */
-        'Access-Control-Allow-Methods': 'OPTIONS, POST, GET',
-        'Access-Control-Max-Age': 2592000, // 30 days
-        'Content-Type': 'application/json'
-        /** add other headers as per requirement */
-    };
+    try{
+        const headers = {
+            'Access-Control-Allow-Origin': 'http://127.0.0.1:5500', /* @dev First, read about security */
+            'Access-Control-Request-Method': '*',
+            'Access-Control-Allow-Methods': 'OPTIONS, POST, GET',
+            'Access-Control-Allow-Headers': '*',
+            'Access-Control-Max-Age': 2592000, // 30 days
+            'Content-Type': '*'
+            /** add other headers as per requirement */
+        };
+    
+        let response = ""
 
-    let response = ""
+        console.log(req["method"])
+    
+        if (req["method"] == "GET") {
+            response = await identifyReqGET(req["url"])
+        }   
+        if (req["method"] == "POST") {
+            let body = await parseJSONBody(req);
 
-    if (req["method"] == "GET") {
-        response = await identifyReqGET(req["url"])
+            console.log(body)
+    
+            response = await identifyReqPOST(req["url"], body)
+        }
+        console.log("RESPUESTA ",response)
+    
+        res.writeHead(response["code"], headers);
+    
+        res.end(JSON.stringify(response["response"]));
+
+    }catch(error){
+        console.log(error)
     }
-    if (req["method"] == "POST") {
-        let body = await parseJSONBody(req);
-
-        response = await identifyReqPOST(req["url"], body)
-    }
-    // console.log(req)
-
-    res.writeHead(200, headers);
-
-    res.end(JSON.stringify(response));
 };
 
 const server = http.createServer(requestListener);
@@ -47,7 +57,7 @@ function identifyReqGET(req) {
         if (req[1] == "users") {
             let respuesta = await db.getUserByMail(req[2])
             console.log("RESPUESTA :", respuesta)
-            resolve(respuesta)
+            resolve({"response":JSON.stringify(respuesta),"code":200})
         }
 
 
@@ -62,28 +72,27 @@ function identifyReqPOST(req, body) {
         console.log("REQUEST POST", req)
         if (req[1] == "send-mail") {
             // console.log("SEND MAIL", body, body["mail"])
-            code = await email.sendVerificationMail(body["mail"])
-            console.log(code)
-            // db.createUserVerification(body["mail"], code , dbMemo);
-            resolve("Email Sended")
+            let code = await email.sendVerificationMail(body["mail"])
+            verifications[body["mail"]] = code
+            console.log(verifications)
+            resolve({"response":"Email Sended","code":200})
         }
-        if (body["code"] && req[1] == "verify-code") {
+        if (req[1] == "verify-code") {
             // console.log("VERIFY CODE")
-            let verified = email.verifyCode(req[2])
-            if (verified) {
-                resolve("Email Verified")
+            if (body["code"] == verifications[body["mail"]]) {
+                resolve({"response":"Email Verified","code":200})
             } else {
-                resolve("Incorrect Code")
+                resolve({"response":"Incorrect code","code":400})
             }
         }
         if (req[1] == "create-user") {
             // console.log("CREATE USER", body)
             let response = db.createUser(body["mail"], body["akka"])
-            resolve(response)
+            resolve({"response":response,"code":200})
         }
 
 
-    })
+    });
 
 }
 

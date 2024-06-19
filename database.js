@@ -28,13 +28,13 @@ async function initializeDB() {
             }
         });
         // Insertar un usuario
-        db.run(`INSERT INTO users (mail, akka, kills_as_wolf, wolfs_killed) VALUES (?, ?, ? ,?)`, ['yoaojoao@gmail.com', 'desarrollador', 0, 0], function (err) {
-            if (err) {
-                return console.error(err.message);
-            } else {
-                console.log(`Un usuario ha sido insertado con el correo ${this.lastID}`);
-            }
-        });
+        // db.run(`INSERT INTO users (mail, akka, kills_as_wolf, wolfs_killed) VALUES (?, ?, ? ,?)`, ['yoaojoao@gmail.com', 'desarrollador', 0, 0], function (err) {
+        //     if (err) {
+        //         return console.error(err.message);
+        //     } else {
+        //         console.log(`Un usuario ha sido insertado con el correo ${this.lastID}`);
+        //     }
+        // });
     });
 
     closeDB(db)
@@ -49,32 +49,6 @@ function openDatabase() {
                 console.log('Connected to the wolf database.');
             }
         });
-        resolve(database)
-    })
-}
-
-function openInMemoryDatabase() {
-    return new Promise((resolve) => {
-        let database = new sqlite3.Database(':memory:', (err) => {
-            if (err) {
-                console.error(err.message);
-            } else {
-                console.log('Iniciada base de datos en memoria');
-            }
-        });
-
-        database.run(`CREATE TABLE IF NOT EXISTS mailVerif (
-            mail TEXT PRIMARY KEY,
-            code CHAR(10),
-            UNIQUE (mail, code)
-            )`, (err) => {
-            if (err) {
-                console.error(err.message);
-            } else {
-                console.log('Tabla de verificacion creada exitosamente o ya existía.');
-            }
-        });
-
         resolve(database)
     })
 }
@@ -141,58 +115,5 @@ function createUser(mail, akka) {
 
 }
 
-async function getUserVerification(mail, code, db) {
-
-    return new Promise(async (resolve) => {
-
-        db.get(`SELECT * 
-                            FROM mailVerif
-                            WHERE mail = '${mail}' AND
-                            code = ${code}
-                    `, (err, row) => {
-            if (err) {
-                console.error(err.message);
-            } else {
-                console.log("ROW", row)
-                resolve(row)
-            }
-        });
-
-        closeDB(db)
-
-    })
-
-}
-
-function createUserVerification(mail, code, db) {
-
-    return new Promise(async (resolve) => {
-        console.log(typeof db)
-        if(typeof db === ''){}
-
-        // let search = await getUserVerification(mail, code, db)
-
-        // if(search !== undefined){
-        //     resolve("User verification alredy exists")
-        // }else{
-    
-        //     db.run(`INSERT INTO mailVerif (mail, code) VALUES (?, ?)`, [mail, code], function (err) {
-        //         if (err) {
-        //             return console.error(err.message);
-        //         } else {
-        //             console.log(`Un usuario ha sido insertado con el correo ${this.lastID}`);
-        //         }
-        //     });
-    
-        //     closeDB(db)
-    
-        //     resolve("User verification created succesfully!")
-        // }
-
-    })
-
-}
-
-module.exports = { initializeDB, getUserByMail, createUser, openInMemoryDatabase
-                 , createUserVerification, getUserVerification
+module.exports = { initializeDB, getUserByMail, createUser
 }
