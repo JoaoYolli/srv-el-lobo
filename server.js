@@ -1,3 +1,4 @@
+//DEPRECATED
 const db = require("./database.js");
 const { Worker } = require('worker_threads');
 const email = require("./email.js");
@@ -33,12 +34,28 @@ const requestListener = async function (req, res) {
             console.log(body)
 
             response = await identifyReqPOST(req["url"], body)
+
+            //Si la peticion requiere guardar la conexion no mando el response
+            if(req["url"] === "/host-game" || req["url"] === "/join-game"){
+                let game = games[response["response"]]
+                console.log("GAME",game)
+                game["clients"][body["mail"]] = res;
+            }
+
         }
         console.log("RESPUESTA ", response)
+        //Si la peticion requiere guardar la conexion no mando el response
+        if (!(req["url"] === "/host-game" || req["url"] === "/join-game")){
+            res.writeHead(response["code"], headers);
+    
+            res.end(JSON.stringify({"content":response["response"]}));
 
-        res.writeHead(response["code"], headers);
+        }
 
-        res.end(JSON.stringify(response["response"]));
+        req.on('close', () => {
+            delete clients[email];
+          });
+
 
     } catch (error) {
         console.log(error)
@@ -96,16 +113,31 @@ function identifyReqPOST(req, body) {
             // console.log("CREATE USER", body)
             let identifier = await createUniqueGameID();
             let worker = await createGame()
-            games[identifier] = worker;
+            games[identifier] = {
+                                "worker":worker,
+                                "clients":{}
+                                };
 
             resolve({ "response": identifier, "code": 200 })
         }
         if (req[1] == "start-game") {
             // console.log("CREATE USER", body)
-            let worker = games[body["gameID"]]
+            let worker = games[body["gameID"]]["worker"]
             worker.postMessage('start-game');
 
             resolve({ "response": "Game started", "code": 200 })
+        }
+        if (req[1] == "join-game") {
+            // console.log("CREATE USER", body)
+            let game = games[body["code-room"]]["worker"]
+            if(game !== undefined){
+                game.postMessage(`join-game/${body["mail"]}/${body["name"]}`);
+                resolve({ "response": "Joined", "code": 200 })
+            }else{
+                resolve({ "response": "No game found", "code": 400 })
+            }
+
+            
         }
 
 
@@ -140,6 +172,7 @@ async function createGame() {
         // Escuchar mensajes del worker
         worker.on('message', (message) => {
             console.log(`Mensaje del worker: ${message}`);
+            threadListener(message)
         });
 
         // Enviar un mensaje al worker
@@ -166,13 +199,38 @@ async function createGame() {
 }
 function createUniqueGameID(){
     return new Promise((resolve) => {
-        let unique = crypto.randomUUID().replace("-","");
+        let unique = crypto.randomUUID().split("-");
+        unique[1] = unique[1].toUpperCase()
         console.log(unique)
-        while(games[unique] !== undefined){
-            unique = crypto.randomUUID().replace("-","");
+        while(games[unique[1]] !== undefined){
+            unique = crypto.randomUUID().split("-").toUpperCase();
+            unique[1] = unique[1].toUpperCase()
             console.log(unique)
         }
-        resolve(unique);
+        resolve(unique[1].toUpperCase());
 
     })
+}
+
+function threadListener(message){
+    message = message.split("/")
+
+    if(message[0] === "PlayerUpdated"){
+        console.log(JSON.parse(message[1]))
+    }
+}
+
+function maintainConnections(){
+    setInterval(() => {
+        for(let game in games){
+            console.log(game)
+
+            let clients = games[game]["clients"]
+
+            for (let mail in clients) {
+                console.log(mail)
+              clients[mail].write(`Hola ${mail} desde el servidor\n`);
+            }
+        }
+      }, 10000);
 }
