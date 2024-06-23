@@ -67,8 +67,9 @@ app.post("/create-user", (req, res) => {
 app.post("/host-game", async (req, res) => {
     try {
         const identifier = await createUniqueGameID();
-        const worker = await createGame();
-        games[identifier] = {
+        const worker = await createGame(identifier);
+        games[identifier.toString()] = {
+            host : "",
             worker: worker,
             clients: {}
         };
@@ -78,20 +79,20 @@ app.post("/host-game", async (req, res) => {
     }
 });
 
-app.post("/start-game", (req, res) => {
-    try {
-        const { gameID } = req.body;
-        const worker = games[gameID]?.worker;
-        if (worker) {
-            worker.postMessage('start-game');
-            res.status(200).json({ content: "Game started" });
-        } else {
-            res.status(400).json({ content: "Game not found" });
-        }
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-});
+// app.post("/start-game", (req, res) => {
+//     try {
+//         const { gameID } = req.body;
+//         const worker = games[gameID]?.worker;
+//         if (worker) {
+//             worker.postMessage('start-game');
+//             res.status(200).json({ content: "Game started" });
+//         } else {
+//             res.status(400).json({ content: "Game not found" });
+//         }
+//     } catch (error) {
+//         res.status(500).json({ error: error.message });
+//     }
+// });
 
 app.post("/join-game", (req, res) => {
     try {
@@ -139,14 +140,14 @@ wss.on('connection', (cliente) => {
 
 
 // Helper functions
-async function createGame() {
+async function createGame(identifier) {
     return new Promise((resolve) => {
         const worker = new Worker('./thread.js');
         worker.on('message', (message) => {
             console.log(`Message from worker: ${message}`);
             threadListener(message);
         });
-        worker.postMessage('Hello, worker!');
+        worker.postMessage(`set-code/${identifier}`);
         worker.on('error', (error) => {
             console.error(`Worker error: ${error}`);
         });
@@ -177,17 +178,56 @@ function threadListener(message) {
     const parts = message.split("/");
     if (parts[0] === "PlayerUpdated") {
         console.log(JSON.parse(parts[1]));
+        let inform = "PlayerUpdated"
+        let wb = games[parts[2]]["host"]
+        let players = JSON.parse(parts[1])
+
+        Object.keys(players).forEach(clave => {
+            inform = inform + "/" + players[clave]["name"]
+            console.log(clave); // Imprime la clave
+          });
+        wb.send(inform)
+
     }
 }
 
+//identify messages from webSocket with client
 function identifyMessage(message, cliente){
     let action = message.split("/")[0]
 
     if(action === "register"){
         let gameCode = message.split("/")[1]
         let mail = message.split("/")[2]
-        games[gameCode]["clients"] = cliente
-        console.log(games)
+
+        if(mail === 'host'){
+
+            games[gameCode]["host"] = cliente
+            console.log(games)
+        }else{
+            games[gameCode]["clients"][mail] = cliente
+            console.log(games)
+        }
+    }
+    if(action === "start-game"){
+
+        try {
+            const gameID = message.split("/")[1];
+            console.log(gameID)
+            const worker = games[gameID]["worker"];
+            const players = games[gameID]["clients"];
+            console.log("PLAEYRS:", players)
+            if (worker) {
+                worker.postMessage('start-game');
+                Object.keys(players).forEach(clave => {
+                    players[clave].send("set-screen/showRole")
+                    console.log(clave); // Imprime la clave
+                  });
+                  games[gameID]["host"].send("roles-shown")
+            }
+        } catch (error) {
+            console.log(error)
+        }
+
     }
 
 }

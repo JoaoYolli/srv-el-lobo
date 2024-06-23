@@ -2,6 +2,7 @@ const { parentPort } = require('worker_threads');
 
 let onGame = false
 let players = {}
+let codeRoom
 
 // Escuchar mensajes del hilo principal
 parentPort.on('message', (message) => {
@@ -19,6 +20,12 @@ parentPort.on('message', (message) => {
     addPlayer(message[2], message[1])
     
   }
+
+  if (message[0] == "set-code"){
+    
+    setCode(message[1])
+    
+  }
 });
 
 function addPlayer(name, mail){
@@ -32,10 +39,16 @@ function addPlayer(name, mail){
   
     players[mail] = player;
   
-    parentPort.postMessage(`PlayerUpdated/${JSON.stringify(players)}`)
+    parentPort.postMessage(`PlayerUpdated/${JSON.stringify(players)}/${codeRoom}`)
 
   }
 
+
+}
+
+function setCode(code){
+
+  codeRoom = code
 
 }
 
