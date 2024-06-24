@@ -1,4 +1,5 @@
 const express = require("express");
+const jwt = require('jsonwebtoken');
 const WebSocket = require('ws');
 const db = require("./database.js");
 const { Worker } = require('worker_threads');
@@ -34,9 +35,14 @@ app.post("/send-mail", async (req, res) => {
         console.log(req.body)
         const { mail } = req.body;
         const code = await email.sendVerificationMail(mail);
+        let user = await db.getUserByMail(mail)
+        if (user === undefined){
+            user = {"akka":""}
+        }
         verifications[mail] = code;
-        res.status(200).json({ content: "Email Sent" });
+        res.status(200).json({ content: user["akka"] });
     } catch (error) {
+        console.log(error)
         res.status(500).json({ error: error.message });
     }
 });
@@ -58,7 +64,21 @@ app.post("/create-user", (req, res) => {
     try {
         const { mail, akka } = req.body;
         const response = db.createUser(mail, akka);
-        res.status(200).json({ content: response });
+        // console.log("PARAMETERRES",req)
+        const token = generateAccessToken(akka, mail)
+        res.status(200).json({ "token": token});
+    } catch (error) {
+        console.log(error)
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.post("/check-token", async (req, res) => {
+    try {
+        const { token } = req.body;
+        let decoded = await verifyAccessToken(token)
+        // console.log(decoded["data"]["id"])
+        res.status(200).json({ "userName": decoded["data"]["id"], "userMail":decoded["data"]["email"]});
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
@@ -69,7 +89,7 @@ app.post("/host-game", async (req, res) => {
         const identifier = await createUniqueGameID();
         const worker = await createGame(identifier);
         games[identifier.toString()] = {
-            host : "",
+            host: "",
             worker: worker,
             clients: {}
         };
@@ -133,6 +153,7 @@ wss.on('connection', (cliente) => {
     // Manejo de cierre de conexión
     cliente.on('close', () => {
         console.log('Cliente desconectado');
+        checkConnection(cliente)
     });
 
     cliente.send("hello world!")
@@ -162,6 +183,46 @@ async function createGame(identifier) {
     });
 }
 
+//checks who have disconnected
+async function checkConnection(clienteD) {
+
+    Object.keys(games).forEach(clave => {
+        let game = games[clave]
+        let jugadores = game["clients"]
+        //checks if the host is the one who disconnected
+        if (game["host"] == clienteD) {
+            //Closes the thread and inform the clients about the host
+            game["worker"].postMessage("host-disconnected")
+            Object.keys(jugadores).forEach(clave2 => {
+
+                jugadores[clave2].send("host-disconnected")
+
+            });
+
+            delete games[clave]
+
+            console.log("GAMES", games)
+
+        } else {//Means a player have disconnected
+            Object.keys(jugadores).forEach(clave2 => {
+                //When founded removes the client from the ones saved
+                if (jugadores[clave2] == clienteD) {
+
+                    // console.log("KEYY",clave2)
+
+                    game["worker"].postMessage(`leave-game/${clave2}`)
+                    delete jugadores[clave2]
+
+                    // console.log("CLIENTES",jugadores)
+
+                }
+
+            });
+        }
+    });
+
+}
+
 function createUniqueGameID() {
     return new Promise((resolve) => {
         let unique = crypto.randomUUID().split("-");
@@ -185,49 +246,99 @@ function threadListener(message) {
         Object.keys(players).forEach(clave => {
             inform = inform + "/" + players[clave]["name"]
             console.log(clave); // Imprime la clave
-          });
+        });
         wb.send(inform)
 
+    }
+    if(parts[0] === "showRole"){
+        let player = games[parts[3]]["clients"][parts[1]]
+        player.send(`set-screen/showRole/${parts[2]}`)
+    }
+
+    if(parts[0] === "roles-shown"){
+        let host = games[parts[1]]["host"]
+        host.send(`"roles-shown"`)
     }
 }
 
 //identify messages from webSocket with client
-function identifyMessage(message, cliente){
+function identifyMessage(message, cliente) {
     let action = message.split("/")[0]
 
-    if(action === "register"){
+    if (action === "register") {
         let gameCode = message.split("/")[1]
         let mail = message.split("/")[2]
 
-        if(mail === 'host'){
+        if (mail === 'host') {
 
             games[gameCode]["host"] = cliente
             console.log(games)
-        }else{
+        } else {
             games[gameCode]["clients"][mail] = cliente
             console.log(games)
         }
     }
-    if(action === "start-game"){
+    if (action === "start-game") {
 
         try {
             const gameID = message.split("/")[1];
             console.log(gameID)
             const worker = games[gameID]["worker"];
             const players = games[gameID]["clients"];
-            console.log("PLAEYRS:", players)
-            if (worker) {
-                worker.postMessage('start-game');
-                Object.keys(players).forEach(clave => {
-                    players[clave].send("set-screen/showRole")
-                    console.log(clave); // Imprime la clave
-                  });
-                  games[gameID]["host"].send("roles-shown")
-            }
+            const cantidadRegistros = Object.keys(players).length;
+            //Lo comentado 1 vez se tiene que descomentar al final
+            // if (cantidadRegistros >= 4) {
+                console.log("PLAEYRS:", players)
+                if (worker) {
+                    let toSend = 'start-game'
+                    let p = message.split("/")
+                    for (let i = 2; i < p.length; i++) {
+                        toSend += "/"+ p[i]
+                      }
+                    worker.postMessage(toSend);
+                    // // // Object.keys(players).forEach(clave => {
+                    // // //     players[clave].send("set-screen/showRole")
+                    // // //     console.log(clave); // Imprime la clave
+                    // // // });
+                    // // // games[gameID]["host"].send("roles-shown")
+                }
+
+            // } else {
+            //     games[gameID]["host"].send("need-more-players")
+            // }
+
         } catch (error) {
             console.log(error)
         }
 
     }
 
+}
+
+function generateAccessToken(name, mail) {
+    const payload = { id: name, 
+                    email: mail }
+
+                    console.log(payload)
+
+    const secret = 'pitos-muy-long';
+    const options = { expiresIn: '1h' };
+
+    return jwt.sign(payload, secret, options);
+}
+
+function verifyAccessToken(token) {
+    return new Promise((resolve) => {
+
+        const secret = 'pitos-muy-long';
+
+    try {
+        const decoded = jwt.verify(token, secret);
+        resolve({ success: true, data: decoded });
+    } catch (error) {
+        resolve({ success: false, error: error.message });
+    }
+
+    })
+    
 }
