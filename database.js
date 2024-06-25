@@ -4,11 +4,11 @@ const fs = require('fs');
 
 async function initializeDB() {
 
-    // var dir = './db';
+    var dir = './db';
 
-    // if (!fs.existsSync(dir)) {
-    //     fs.mkdirSync(dir);
-    // }
+    if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir);
+    }
 
     let db = await openDatabase()
 
@@ -42,7 +42,7 @@ async function initializeDB() {
 
 function openDatabase() {
     return new Promise((resolve) => {
-        let database = new sqlite3.Database('./db/el-lobo.db', sqlite3.OPEN_READWRITE, (err) => {
+        let database = new sqlite3.Database('./db/el-lobo.db', sqlite3.OPEN_CREATE || OPEN_READWRITE, (err) => {
             if (err) {
                 console.error(err.message);
             } else {

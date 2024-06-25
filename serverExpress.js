@@ -7,10 +7,11 @@ const email = require("./email.js");
 const cors = require('cors');
 const bodyParser = require('body-parser');
 const crypto = require('crypto');
+require('dotenv').config();
 
 const app = express();
 const host = 'localhost';
-const port = 8000;
+const port = process.env.PORT;
 let verifications = {};
 let games = {
 };
@@ -321,7 +322,7 @@ function generateAccessToken(name, mail) {
 
                     console.log(payload)
 
-    const secret = 'pitos-muy-long';
+    const secret = process.env.JWT_KEY;
     const options = { expiresIn: '1h' };
 
     return jwt.sign(payload, secret, options);
@@ -330,7 +331,7 @@ function generateAccessToken(name, mail) {
 function verifyAccessToken(token) {
     return new Promise((resolve) => {
 
-        const secret = 'pitos-muy-long';
+        const secret = process.env.JWT_KEY;
 
     try {
         const decoded = jwt.verify(token, secret);
