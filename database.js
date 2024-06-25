@@ -4,11 +4,11 @@ const fs = require('fs');
 
 async function initializeDB() {
 
-    var dir = './db';
+    // var dir = './db';
 
-    if (!fs.existsSync(dir)) {
-        fs.mkdirSync(dir);
-    }
+    // if (!fs.existsSync(dir)) {
+    //     fs.mkdirSync(dir);
+    // }
 
     let db = await openDatabase()
 
