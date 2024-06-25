@@ -133,6 +133,7 @@ app.post("/join-game", (req, res) => {
 
 // Initialize DB and start the server
 db.initializeDB();
+db.createUser("yoaojoao@gmail.com", "Joao");
 const server = app.listen(port, /*host,*/ () => {
     console.log(`Server is running on http://${host}:${port}`);
 });
