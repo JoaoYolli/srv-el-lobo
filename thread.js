@@ -24,7 +24,7 @@ parentPort.on('message', (message) => {
   if (parts[0] == "start-game") {
     onGame = true
     let setRoles = []
-    for(let i = 2;i<parts.length;i++){
+    for(let i = 1;i<parts.length;i++){
       setRoles.push(parts[i])
     }
     console.log(setRoles)

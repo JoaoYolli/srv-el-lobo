@@ -1,4 +1,10 @@
 {
+  "name": "my-api",
+  "version": "1.0.0",
+  "main": "serverExpress.js",
+  "scripts": {
+    "start": "node serverExpress.js"
+  },
   "dependencies": {
     "cors": "^2.8.5",
     "express": "^4.19.2",
