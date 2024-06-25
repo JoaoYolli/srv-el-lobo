@@ -12,11 +12,11 @@ const pool = new Pool({
 });
 
 async function initializeDB() {
-  var dir = './db';
+//   var dir = './db';
 
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir);
-  }
+//   if (!fs.existsSync(dir)) {
+//     fs.mkdirSync(dir);
+//   }
 
   const client = await pool.connect();
 
