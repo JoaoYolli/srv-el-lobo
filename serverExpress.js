@@ -132,7 +132,7 @@ app.post("/join-game", (req, res) => {
 
 // Initialize DB and start the server
 db.initializeDB();
-const server = app.listen(port, host, () => {
+const server = app.listen(port, /*host,*/ () => {
     console.log(`Server is running on http://${host}:${port}`);
 });
 
