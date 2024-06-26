@@ -16,17 +16,17 @@ let verifications = {};
 let games = {
 };
 
-const corsOptions = {
-    // origin: 'http://127.0.0.1:5500',
-    origin: 'https://werewolves-millers-hollow.vercel.app',
-    // origin: '*',
-    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
-    preflightContinue: false,
-    optionsSuccessStatus: 204
-};
+// const corsOptions = {
+//     // origin: 'http://127.0.0.1:5500',
+//     origin: 'https://werewolves-millers-hollow.vercel.app',
+//     // origin: '*',
+//     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
+//     preflightContinue: false,
+//     optionsSuccessStatus: 204
+// };
 
 // Middleware
-app.use(cors(corsOptions));
+app.use(cors(/*corsOptions*/));
 app.use(bodyParser.json());
 
 // Routes
