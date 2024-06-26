@@ -16,15 +16,44 @@ let verifications = {};
 let games = {
 };
 
+const corsOptions = {
+    // origin: 'http://127.0.0.1:5500',
+    origin: 'https://werewolves-millers-hollow.vercel.app',
+    // origin: '*',
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
+    preflightContinue: false,
+    optionsSuccessStatus: 204
+};
+
 // Middleware
-app.use(cors());
+app.use(cors(corsOptions));
 app.use(bodyParser.json());
 
 // Routes
-app.get("/users/:mail", async (req, res) => {
+app.get("/user/:mail", async (req, res) => {
     try {
         const mail = req.params.mail;
         const respuesta = await db.getUserByMail(mail);
+        res.status(200).json({ content: JSON.stringify(respuesta) });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.post("/user-killed-wolf", async (req, res) => {
+    try {
+        const { mail } = req.body;
+        const respuesta = await db.increaseWolfsKilled(mail);
+        res.status(200).json({ content: JSON.stringify(respuesta) });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.post("/user-killed-as-wolf", async (req, res) => {
+    try {
+        const { mail } = req.body;
+        const respuesta = await db.increaseKillsAsWolf(mail);
         res.status(200).json({ content: JSON.stringify(respuesta) });
     } catch (error) {
         res.status(500).json({ error: error.message });
