@@ -90,6 +90,18 @@ app.post("/verify-code", (req, res) => {
     }
 });
 
+app.post("/delete-verification", (req, res) => {
+    try {
+        const { mail } = req.body;
+        if (verifications[mail]) {
+            delete verifications[mail]
+            res.status(200).json({ content:"Deleted" });
+        }
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
 app.post("/create-user", (req, res) => {
     try {
         const { mail, akka } = req.body;
