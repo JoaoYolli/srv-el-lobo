@@ -2,7 +2,7 @@ const { OPEN_READWRITE, OPEN_FULLMUTEX, OPEN_CREATE } = require('sqlite3');
 const sqlite3 = require('sqlite3').verbose();
 const fs = require('fs');
 async function initializeDB() {
-    var dir = './db';
+    var dir = '../db';
     if (!fs.existsSync(dir)) {
         fs.mkdirSync(dir);
     }
