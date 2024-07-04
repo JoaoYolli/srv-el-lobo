@@ -35,7 +35,7 @@ async function initializeDB() {
 }
 function openDatabase() {
     return new Promise((resolve) => {
-        let database = new sqlite3.Database('./db/el-lobo.db', sqlite3.OPEN_READWRITE || OPEN_CREATE, (err) => {
+        let database = new sqlite3.Database('../db/el-lobo.db', sqlite3.OPEN_READWRITE || OPEN_CREATE, (err) => {
             if (err) {
                 console.log("FALLAS")
                 console.error(err.message);
