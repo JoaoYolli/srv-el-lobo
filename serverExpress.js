@@ -68,6 +68,20 @@ app.get("/getGames/:auth", async (req, res) => {
     }
 });
 
+app.post("/maintainAuth", async (req, res) => {
+    try {
+        const {auth} = (req.body);
+        console.log(auth)
+        if (auth && auth == "roxy") {
+            res.status(200).json({ content: "Authorized" });
+        } else {
+            res.status(500).json({ error: "unatorized" });
+        }
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
 app.post("/deleteGame/:auth", async (req, res) => {
     try {
         const auth = req.params.auth;
