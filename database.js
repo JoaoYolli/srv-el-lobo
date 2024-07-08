@@ -73,6 +73,34 @@ async function getUserByMail(mail) {
         closeDB(db)
     })
 }
+async function getUsers() {
+    return new Promise(async (resolve, reject) => {
+        let db;
+        try {
+            db = await openDatabase();
+            db.all(`SELECT * FROM users`, (err, rows) => {
+                if (err) {
+                    console.error(err.message);
+                    reject(err);
+                } else {
+                    let users = [];
+                    rows.forEach(row => {
+                        users.push(row)
+                    });
+                    resolve(users);
+                }
+            });
+        } catch (error) {
+            console.error("Database open error:", error);
+            reject(error);
+        } finally {
+            if (db) {
+                closeDB(db);
+            }
+        }
+    });
+}
+
 function createUser(mail, akka) {
     return new Promise(async (resolve) => {
         let search = await getUserByMail(mail)
@@ -138,5 +166,5 @@ function increaseWolfsKilled(mail) {
       }
   })
 }
-module.exports = { initializeDB, getUserByMail, createUser, increaseKillsAsWolf,increaseWolfsKilled
+module.exports = { initializeDB, getUserByMail, createUser, increaseKillsAsWolf,increaseWolfsKilled,getUsers
 }

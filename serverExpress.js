@@ -40,6 +40,53 @@ app.get("/user/:mail", async (req, res) => {
     }
 });
 
+app.get("/getAccounts/:auth", async (req, res) => {
+    try {
+        const auth = req.params.auth;
+        if (auth == "roxy") {
+            const respuesta = await db.getUsers();
+            res.status(200).json({ content: JSON.stringify(respuesta) });
+        } else {
+            res.status(500).json({ error: "unatorized" });
+        }
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.get("/getGames/:auth", async (req, res) => {
+    try {
+        const auth = req.params.auth;
+        if (auth == "roxy") {
+            const respuesta = await getGames();
+            res.status(200).json({ content: JSON.stringify(respuesta) });
+        } else {
+            res.status(500).json({ error: "unatorized" });
+        }
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.post("/deleteGame/:auth", async (req, res) => {
+    try {
+        const auth = req.params.auth;
+        if (auth == "roxy") {
+            let { game } = (req.body);
+            game = game.replaceAll("\"","")
+            let gameHost = games[game]["host"];
+            gameHost.send("game-closed")
+            gameHost.close()
+
+            res.status(200).json({ content: "Closed" });
+        } else {
+            res.status(500).json({ error: "unatorized" });
+        }
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
 app.post("/user-killed-wolf", async (req, res) => {
     try {
         const { mail } = req.body;
@@ -66,8 +113,8 @@ app.post("/send-mail", async (req, res) => {
         const { mail } = req.body;
         const code = await email.sendVerificationMail(mail);
         let user = await db.getUserByMail(mail)
-        if (user === undefined){
-            user = {"akka":""}
+        if (user === undefined) {
+            user = { "akka": "" }
         }
         verifications[mail] = code;
         res.status(200).json({ content: user["akka"] });
@@ -95,7 +142,7 @@ app.post("/delete-verification", (req, res) => {
         const { mail } = req.body;
         if (verifications[mail]) {
             delete verifications[mail]
-            res.status(200).json({ content:"Deleted" });
+            res.status(200).json({ content: "Deleted" });
         }
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -108,7 +155,7 @@ app.post("/create-user", (req, res) => {
         const response = db.createUser(mail, akka);
         // console.log("PARAMETERRES",req)
         const token = generateAccessToken(akka, mail)
-        res.status(200).json({ "token": token});
+        res.status(200).json({ "token": token });
     } catch (error) {
         console.log(error)
         res.status(500).json({ error: error.message });
@@ -120,7 +167,7 @@ app.post("/check-token", async (req, res) => {
         const { token } = req.body;
         let decoded = await verifyAccessToken(token)
         // console.log(decoded["data"]["id"])
-        res.status(200).json({ "userName": decoded["data"]["id"], "userMail":decoded["data"]["email"]});
+        res.status(200).json({ "userName": decoded["data"]["id"], "userMail": decoded["data"]["email"] });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
@@ -174,7 +221,7 @@ app.post("/join-game", (req, res) => {
 
 // Initialize DB and start the server
 db.initializeDB();
-const server = app.listen(port, /*host,*/ () => {
+const server = app.listen(port, /*host,*/() => {
     console.log(`Server is running on http://${host}:${port}`);
 });
 
@@ -292,12 +339,12 @@ function threadListener(message) {
         wb.send(inform)
 
     }
-    if(parts[0] === "showRole"){
+    if (parts[0] === "showRole") {
         let player = games[parts[3]]["clients"][parts[1]]
         player.send(`set-screen/showRole/${parts[2]}`)
     }
 
-    if(parts[0] === "roles-shown"){
+    if (parts[0] === "roles-shown") {
         let host = games[parts[1]]["host"]
         host.send(`"roles-shown"`)
     }
@@ -330,20 +377,20 @@ function identifyMessage(message, cliente) {
             const cantidadRegistros = Object.keys(players).length;
             //Lo comentado 1 vez se tiene que descomentar al final
             // if (cantidadRegistros >= 4) {
-                console.log("PLAEYRS:", players)
-                if (worker) {
-                    let toSend = 'start-game'
-                    let p = message.split("/")
-                    for (let i = 2; i < p.length; i++) {
-                        toSend += "/"+ p[i]
-                      }
-                    worker.postMessage(toSend);
-                    // // // Object.keys(players).forEach(clave => {
-                    // // //     players[clave].send("set-screen/showRole")
-                    // // //     console.log(clave); // Imprime la clave
-                    // // // });
-                    // // // games[gameID]["host"].send("roles-shown")
+            console.log("PLAEYRS:", players)
+            if (worker) {
+                let toSend = 'start-game'
+                let p = message.split("/")
+                for (let i = 2; i < p.length; i++) {
+                    toSend += "/" + p[i]
                 }
+                worker.postMessage(toSend);
+                // // // Object.keys(players).forEach(clave => {
+                // // //     players[clave].send("set-screen/showRole")
+                // // //     console.log(clave); // Imprime la clave
+                // // // });
+                // // // games[gameID]["host"].send("roles-shown")
+            }
 
             // } else {
             //     games[gameID]["host"].send("need-more-players")
@@ -358,10 +405,12 @@ function identifyMessage(message, cliente) {
 }
 
 function generateAccessToken(name, mail) {
-    const payload = { id: name, 
-                    email: mail }
+    const payload = {
+        id: name,
+        email: mail
+    }
 
-                    console.log(payload)
+    console.log(payload)
 
     const secret = process.env.JWT_KEY;
     const options = { expiresIn: '1h' };
@@ -374,13 +423,38 @@ function verifyAccessToken(token) {
 
         const secret = process.env.JWT_KEY;
 
-    try {
-        const decoded = jwt.verify(token, secret);
-        resolve({ success: true, data: decoded });
-    } catch (error) {
-        resolve({ success: false, error: error.message });
-    }
+        try {
+            const decoded = jwt.verify(token, secret);
+            resolve({ success: true, data: decoded });
+        } catch (error) {
+            resolve({ success: false, error: error.message });
+        }
 
     })
-    
+
 }
+
+async function getGames() {
+
+    console.log(games)
+
+    return new Promise((resolve) => {
+        let gamesToReturn = {}
+        Object.keys(games).forEach(clave => {
+            let game = games[clave]
+            let jugadores = game["clients"]
+            let players = []
+
+            Object.keys(jugadores).forEach(clave2 => {
+                //When founded removes the client from the ones saved
+                players.push(clave2)
+
+            });
+
+            gamesToReturn[clave] = players;
+
+        });
+        resolve(gamesToReturn)
+    })
+
+} 
