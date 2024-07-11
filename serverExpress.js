@@ -70,7 +70,7 @@ app.get("/getGames/:auth", async (req, res) => {
 
 app.post("/maintainAuth", async (req, res) => {
     try {
-        const {auth} = (req.body);
+        const { auth } = (req.body);
         console.log(auth)
         if (auth && auth == "roxy") {
             res.status(200).json({ content: "Authorized" });
@@ -87,7 +87,7 @@ app.post("/deleteGame/:auth", async (req, res) => {
         const auth = req.params.auth;
         if (auth == "roxy") {
             let { game } = (req.body);
-            game = game.replaceAll("\"","")
+            game = game.replaceAll("\"", "")
             let gameHost = games[game]["host"];
             gameHost.send("game-closed")
             gameHost.close()
@@ -125,10 +125,14 @@ app.post("/send-mail", async (req, res) => {
     try {
         console.log(req.body)
         const { mail } = req.body;
-        const code = await email.sendVerificationMail(mail);
+        let code
         let user = await db.getUserByMail(mail)
+        console.log("PPPPPPPPP",process.env.PUBLIC_URL)
         if (user === undefined) {
             user = { "akka": "" }
+            code = await email.sendVerificationMail(mail, process.env.PUBLIC_URL);
+        }else{
+            code = await email.sendVerificationMailRegisteredUser(mail, user["akka"], process.env.PUBLIC_URL);
         }
         verifications[mail] = code;
         res.status(200).json({ content: user["akka"] });
@@ -414,6 +418,13 @@ function identifyMessage(message, cliente) {
             console.log(error)
         }
 
+    }
+
+    if (action === "check-players") {
+        const gameID = message.split("/")[1];
+        const players = games[gameID]["clients"];
+        let cantidadRegistros = Object.keys(players).length
+        games[gameID]["host"].send("players-number/" + cantidadRegistros)
     }
 
 }
